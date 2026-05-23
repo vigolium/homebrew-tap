@@ -1,0 +1,127 @@
+name: Update Formula
+
+on:
+  schedule:
+    # Run every 2 days at 00:00 UTC
+    - cron: '0 0 */2 * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch latest npm version and update formula
+        id: gen
+        run: |
+          set -euo pipefail
+
+          PKG="@vigolium/vigolium"
+          REGISTRY="https://registry.npmjs.org"
+          FORMULA="Formula/vigolium.rb"
+
+          # Latest published version = the wrapper package's "latest" dist-tag.
+          echo "Fetching latest version of $PKG..."
+          VERSION=$(curl -fsSL "$REGISTRY/$PKG" | jq -r '."dist-tags".latest')
+          echo "Latest version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Version is parsed from the existing tarball URL (no `version` stanza).
+          CURRENT_VERSION=$(grep -oP 'vigolium-\K[^"]+(?=-darwin-arm64\.tgz)' "$FORMULA" || echo "none")
+          echo "Current version: $CURRENT_VERSION"
+
+          # The native binary for each platform ships as a version-suffixed
+          # build of the same package, e.g. vigolium-<version>-darwin-arm64.tgz.
+          declare -A CHECKSUMS
+          for tag in "darwin-arm64" "darwin-x64" "linux-arm64" "linux-x64"; do
+            URL="$REGISTRY/$PKG/-/vigolium-${VERSION}-${tag}.tgz"
+            echo "Hashing $URL"
+            SHA=$(curl -fsSL "$URL" | sha256sum | cut -d' ' -f1)
+            if [ -z "$SHA" ]; then
+              echo "Error: failed to compute checksum for $tag"
+              exit 1
+            fi
+            CHECKSUMS[$tag]=$SHA
+            echo "  $tag: $SHA"
+          done
+
+          # Regenerate the formula. $VERSION and ${CHECKSUMS[...]} are expanded
+          # by the shell; Homebrew derives the version from the tarball URL.
+          cat > "$FORMULA" << EOF
+          # typed: false
+          # frozen_string_literal: true
+
+          class Vigolium < Formula
+            desc "High-fidelity vulnerability scanner fusing agentic AI with native speed"
+            homepage "https://vigolium.com"
+            license "AGPL-3.0-only"
+
+            on_macos do
+              on_arm do
+                url "$REGISTRY/$PKG/-/vigolium-${VERSION}-darwin-arm64.tgz"
+                sha256 "${CHECKSUMS[darwin-arm64]}"
+              end
+              on_intel do
+                url "$REGISTRY/$PKG/-/vigolium-${VERSION}-darwin-x64.tgz"
+                sha256 "${CHECKSUMS[darwin-x64]}"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "$REGISTRY/$PKG/-/vigolium-${VERSION}-linux-arm64.tgz"
+                sha256 "${CHECKSUMS[linux-arm64]}"
+              end
+              on_intel do
+                url "$REGISTRY/$PKG/-/vigolium-${VERSION}-linux-x64.tgz"
+                sha256 "${CHECKSUMS[linux-x64]}"
+              end
+            end
+
+            def install
+              # Each npm platform package ships the native binary gzipped at
+              # vendor/<platform-tag>/vigolium.gz; decompress it and install the binary.
+              gz = Dir["vendor/*/vigolium.gz"].first
+              raise "vigolium.gz not found in tarball" if gz.nil?
+
+              system "gunzip", gz
+              bin.install gz.delete_suffix(".gz")
+            end
+
+            test do
+              assert_match "vigolium", shell_output("#{bin}/vigolium --help")
+            end
+          end
+          EOF
+
+          # Note: the YAML block-scalar dedent already left the formula
+          # correctly indented (class at column 0, members at 2, ...), so no
+          # post-processing is needed here.
+
+          echo "Formula updated successfully:"
+          cat "$FORMULA"
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet Formula/vigolium.rb; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          VERSION: ${{ steps.gen.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/vigolium.rb
+          git commit -m "chore: update vigolium to ${VERSION}"
+          git push
