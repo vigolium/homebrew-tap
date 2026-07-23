@@ -8,23 +8,23 @@ class Vigolium < Formula
 
   on_macos do
     on_arm do
-      url "https://registry.npmjs.org/@vigolium/vigolium/-/vigolium-0.3.3-darwin-arm64.tgz"
-      sha256 "8a4be9fc826d8d26849aebf0ac5dc52dc4825087c8f1413dd9137ad314f6b507"
+      url "https://registry.npmjs.org/@vigolium/vigolium/-/vigolium-0.3.4-darwin-arm64.tgz"
+      sha256 "40bf5e404d8fb6e0f94af8d0686ee4c15fac60715397e678020f7c210e5b682c"
     end
     on_intel do
-      url "https://registry.npmjs.org/@vigolium/vigolium/-/vigolium-0.3.3-darwin-x64.tgz"
-      sha256 "a3903ea47842f5033e1102f300daaa59a35b1876368c945a0cbe3b74d9cadc12"
+      url "https://registry.npmjs.org/@vigolium/vigolium/-/vigolium-0.3.4-darwin-x64.tgz"
+      sha256 "fecc6bd3bb2d1aa12db258220e9e9634ecabc69a73855c1293c083b1e71573cc"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://registry.npmjs.org/@vigolium/vigolium/-/vigolium-0.3.3-linux-arm64.tgz"
-      sha256 "ee7f1fdac963e3ac22960950bf8213d8794ff5e7c6727c1db961b8def13aba5a"
+      url "https://registry.npmjs.org/@vigolium/vigolium/-/vigolium-0.3.4-linux-arm64.tgz"
+      sha256 "a1696d9e04bc7513598b1adef66e01cf4693606f648fc9bbc742d4627ef35783"
     end
     on_intel do
-      url "https://registry.npmjs.org/@vigolium/vigolium/-/vigolium-0.3.3-linux-x64.tgz"
-      sha256 "f1180c3c505209e34e14246f7c00c69eb0a454cc43899ea8f1fa780b161cc8c3"
+      url "https://registry.npmjs.org/@vigolium/vigolium/-/vigolium-0.3.4-linux-x64.tgz"
+      sha256 "3e88f5617e07b37be65b9e302d7c78169ea3388fe99ff7ddecce35d936d2d6e3"
     end
   end
 
